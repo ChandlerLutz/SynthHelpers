@@ -1,0 +1,18 @@
+Package: SynthHelpers
+Type: Package
+Title: Helper Functions for the Synth R6 Class
+Version: 0.0.0.9000
+Date: 2016-11-21
+Author: Chandler Lutz
+Maintainer: Chandler Lutz <cl.eco@cbs.dk>
+Description: C++ and other functions for the Synth R6 Class.
+LazyData: true
+License: GPL-2
+Depends:
+    R (>= 3.1.0)
+Imports:
+    Rcpp (>= 0.12.8)
+LinkingTo: Rcpp, RcppArmadillo
+Suggests:
+    testthat
+RoxygenNote: 5.0.1
