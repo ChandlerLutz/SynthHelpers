@@ -149,6 +149,8 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     arma::vec cvec = join_vert(c_x, c_y);  // stack the c_x and c_y vectors
     // Solve
     arma::vec s_tmp  = arma::solve(AP, cvec);
+    Rcout << "s_tmp: " << std::endl;
+    s_tmp.print();
 
     // Get x and y
     x = s_tmp.rows(0, n - 1);
@@ -272,9 +274,19 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
       smwa1  = smwa1 / d;
       arma::mat smwc1 = c_x / d;
       arma::mat smwa2 = A.t() -
-	(H * arma::solve(smwinner, arma::solve(smwinner.t(), H.t() * smwa1)));
+	(H * arma::solve(smwinner,
+			 arma::solve(smwinner.t(),
+				     H.t() * smwa1,
+				     arma::solve_opts::equilibrate),
+			 arma::solve_opts::equilibrate));
       smwa2 = smwa2 / d;
-      arma::mat smwc2 = (c_x - (H * arma::solve(smwinner, arma::solve(smwinner.t(), H.t() * smwc1)))) / d;
+      arma::mat smwc2 = (c_x -
+			 (H * arma::solve(smwinner,
+					  arma::solve(smwinner.t(),
+						      H.t() * smwc1,
+						      arma::solve_opts::equilibrate),
+					  arma::solve_opts::equilibrate)
+			  )) / d;
       delta_y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
       delta_x = smwa2 * delta_y - smwc2;
     }
@@ -448,6 +460,11 @@ arma::vec solution_w_cpp(arma::vec solution_v, arma::mat X0_scaled, arma::mat X1
   //The the solution to the optimization problem which are the
   //weights in the synthetic control process
   arma::vec solution_out = ipop_results["primal"];
+
+  std::string conv_out = ipop_results["convergence"];
+  double dual_out = ipop_results["dual"];
+  Rcout << conv_out << std::endl;
+  Rcout << dual_out << std::endl;
 
   return solution_out;
 }

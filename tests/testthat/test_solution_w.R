@@ -8,6 +8,7 @@
 ##as Synth
 
 library(kernlab); library(Rcpp); library(RcppArmadillo); library(microbenchmark)
+library(LowRankQP)
 
 ##sourceCpp("../../src/SynthCpp_functions.cpp")
 
@@ -54,7 +55,11 @@ f.reg.synth <- function(solution.v, X0.scaled, X1.scaled) {
                 r = r, bound = 10, margin = 5e-04,
                 maxiter = 1000, sigf = 5)
 
+    res2 <- LowRankQP(Vmat=H,dvec=c,Amat=A,bvec=1,uvec=rep(1,length(c)),method="LU")
+    print(res2$alpha)
     solution.w <- as.matrix(primal(res))  ##row vector
+    print(dual(res))
+    print(how(res))
     return(solution.w)
 }
 
@@ -64,6 +69,9 @@ test_that("solution_w_cpp() produces the same results as the original Synth Code
     expect_equal(f.reg.synth(solution.v, X0.scaled, X1.scaled),
                  solution_w_cpp(as.matrix(solution.v), X0.scaled, X1.scaled),
                  tolerance = 1e-5)
+    ## expect_equal(f.reg.synth(rep(1 / 12, 12), X0.scaled, X1.scaled),
+    ##              solution_w_cpp(as.matrix(rep(1 / 12, 12)), X0.scaled, X1.scaled),
+    ##              tolerance = 1e-5)
 })
 
 
@@ -112,6 +120,10 @@ test_that("fn_v_cpp() produces the same results as the original Synth code", {
                  fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1),
                  tolerance = 1e-5
                  )
+    ## expect_equal(fn_V(as.matrix(rep(1 / 12, 12)), X0.scaled, X1.scaled, Z0, Z1),
+    ##              fn_v_cpp(as.matrix(rep(1 / 12, 12)), X0.scaled, X1.scaled, Z0, Z1),
+    ##              tolerance = 1e-5
+    ##              )
 })
 
 microbenchmark(
