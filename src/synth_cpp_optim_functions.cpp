@@ -6,7 +6,6 @@
 
 using namespace Rcpp;
 
-
 //C++ version of the chunkmult function from kernlab
 arma::mat chunkmultCpp(arma::mat Z, double csize, arma::vec colscale) {
   int n = Z.n_rows;
@@ -49,6 +48,7 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
   //The number of rows in H
   int n = H.n_rows;
   int cols = H.n_cols;
+  double inv_tol = 1.0e-025; 
 
   //Rcout << "Rows: " << n << std::endl;
 
@@ -148,7 +148,7 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     //Solve s_tmp = AP^{-1} %*% c(c.x,c.y)
     arma::vec cvec = join_vert(c_x, c_y);  // stack the c_x and c_y vectors
     // Solve
-    arma::mat AP_pinv = pinv(AP, 1.0e-020);
+    arma::mat AP_pinv = pinv(AP, inv_tol);
     arma::vec s_tmp = AP_pinv *  cvec;
     //arma::vec s_tmp  = arma::solve(AP, cvec);
     // Rcout << "s_tmp: " << std::endl;
@@ -166,7 +166,7 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     arma::mat smwc1 = c_x;
     // arma::mat smwa2 = smwa1 -
     //   (H * arma::solve(smwinner, arma::solve(smwinner.t(), (H.t() * smwa1))));
-    arma::mat smwinner_pinv = arma::pinv(smwinner, 1.0e-020);
+    arma::mat smwinner_pinv = arma::pinv(smwinner, inv_tol);
     arma::mat smwa2 = smwa1 -
       (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwa1)));
     // arma::mat smwc2 = smwc1 -
@@ -174,7 +174,7 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     arma::mat smwc2 = smwc1 -
       (H * (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwc1))));
     // y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
-    y = arma::pinv(A * smwa2 + H_y, 1.0e-020) * c_y + A * smwc2;
+    y = arma::pinv(A * smwa2 + H_y, inv_tol) * c_y + A * smwc2;
     x = smwa2 * y - smwc2;
   }
 
@@ -273,7 +273,7 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
       arma::vec cvec = join_vert(c_x, c_y);  // stack the c_x and c_y vectors
       // Solve
       //arma::vec s1_tmp  = arma::solve(AP, cvec);
-      arma::vec s1_tmp = arma::pinv(AP, 1.0e-020) * cvec;
+      arma::vec s1_tmp = arma::pinv(AP, inv_tol) * cvec;
       delta_x = s1_tmp.rows(0, n - 1);
       delta_y = s1_tmp.rows(n, n + m - 1);
     } else {
@@ -283,7 +283,7 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
       smwa1  = smwa1 / d;
       arma::mat smwc1 = c_x / d;
       //Use pinv to allow for tolerance in matrix inversion
-      arma::mat smwinner_pinv = arma::pinv(smwinner, 1.0e-020);
+      arma::mat smwinner_pinv = arma::pinv(smwinner, inv_tol);
       arma::mat smwa2 = A.t() - (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwa1)));
       // arma::mat smwa2 = A.t() -
       // 	(H * arma::solve(smwinner,
@@ -302,7 +302,7 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
       // 						      )
       // 					  )
       // 			  )) / d;
-      delta_y = arma::pinv(A * smwa2 + H_y, 1.0e-020) * (c_y + A * smwc2);
+      delta_y = arma::pinv(A * smwa2 + H_y, inv_tol) * (c_y + A * smwc2);
       //delta_y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
       delta_x = smwa2 * delta_y - smwc2;
     }
@@ -352,18 +352,18 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
       AP(arma::span(n, n + m - 1), arma::span(n, n + m - 1)) = H_y;
       // Solve
       // arma::vec s1_tmp  = arma::solve(AP, join_vert(c_x, c_y));
-      arma::vec s1_tmp  = arma::pinv(AP, 1.0e-020) * join_vert(c_x, c_y);
+      arma::vec s1_tmp  = arma::pinv(AP, inv_tol) * join_vert(c_x, c_y);
       delta_x = s1_tmp.rows(0, n - 1);
       delta_y = s1_tmp.rows(n, n + m - 1);
     } else if (smw == 1) {
       smwc1 = c_x / d;
-      arma::mat smwinner_pinv = arma::pinv(smwinner, 1.0e-020);
+      arma::mat smwinner_pinv = arma::pinv(smwinner, inv_tol);
       // smwc2 = (c_x -
       // 	       (H * arma::solve(smwinner, arma::solve(smwinner.t(), H.t() * smwc1)))) / d;
       smwc2 = (c_x -
 	       (H * (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwc1))))) / d;
       // delta_y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
-      delta_y = arma::pinv(A * smwa2 + H_y, 1.0e-020) * (c_y + A * smwc2);
+      delta_y = arma::pinv(A * smwa2 + H_y, inv_tol) * (c_y + A * smwc2);
       delta_x = smwa2 * delta_y - smwc2;
     }
 
