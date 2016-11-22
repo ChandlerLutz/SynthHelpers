@@ -55,11 +55,11 @@ f.reg.synth <- function(solution.v, X0.scaled, X1.scaled) {
                 r = r, bound = 10, margin = 5e-04,
                 maxiter = 1000, sigf = 5)
 
-    res2 <- LowRankQP(Vmat=H,dvec=c,Amat=A,bvec=1,uvec=rep(1,length(c)),method="LU")
-    print(res2$alpha)
+    ##res2 <- LowRankQP(Vmat=H,dvec=c,Amat=A,bvec=1,uvec=rep(1,length(c)),method="LU")
+    ##print(res2$alpha)
     solution.w <- as.matrix(primal(res))  ##row vector
-    print(dual(res))
-    print(how(res))
+    ##print(dual(res))
+    ##print(how(res))
     return(solution.w)
 }
 

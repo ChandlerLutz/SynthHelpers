@@ -148,9 +148,11 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     //Solve s_tmp = AP^{-1} %*% c(c.x,c.y)
     arma::vec cvec = join_vert(c_x, c_y);  // stack the c_x and c_y vectors
     // Solve
-    arma::vec s_tmp  = arma::solve(AP, cvec);
-    Rcout << "s_tmp: " << std::endl;
-    s_tmp.print();
+    arma::mat AP_pinv = pinv(AP, 1.0e-020);
+    arma::vec s_tmp = AP_pinv *  cvec;
+    //arma::vec s_tmp  = arma::solve(AP, cvec);
+    // Rcout << "s_tmp: " << std::endl;
+    // s_tmp.print();
 
     // Get x and y
     x = s_tmp.rows(0, n - 1);
@@ -162,11 +164,17 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     arma::mat smwinner = V + chol(H.t() * H);
     arma::mat smwa1 = A.t();
     arma::mat smwc1 = c_x;
+    // arma::mat smwa2 = smwa1 -
+    //   (H * arma::solve(smwinner, arma::solve(smwinner.t(), (H.t() * smwa1))));
+    arma::mat smwinner_pinv = arma::pinv(smwinner, 1.0e-020);
     arma::mat smwa2 = smwa1 -
-      (H * arma::solve(smwinner, arma::solve(smwinner.t(), (H.t() * smwa1))));
+      (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwa1)));
+    // arma::mat smwc2 = smwc1 -
+    //   (H * arma::solve(smwinner, arma::solve(smwinner.t(), (H.t() * smwc1))));
     arma::mat smwc2 = smwc1 -
-      (H * arma::solve(smwinner, arma::solve(smwinner.t(), (H.t() * smwc1))));
-    y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
+      (H * (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwc1))));
+    // y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
+    y = arma::pinv(A * smwa2 + H_y, 1.0e-020) * c_y + A * smwc2;
     x = smwa2 * y - smwc2;
   }
 
@@ -264,7 +272,8 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
       //Solve s_tmp = AP^{-1} %*% c(c.x,c.y)
       arma::vec cvec = join_vert(c_x, c_y);  // stack the c_x and c_y vectors
       // Solve
-      arma::vec s1_tmp  = arma::solve(AP, cvec);
+      //arma::vec s1_tmp  = arma::solve(AP, cvec);
+      arma::vec s1_tmp = arma::pinv(AP, 1.0e-020) * cvec;
       delta_x = s1_tmp.rows(0, n - 1);
       delta_y = s1_tmp.rows(n, n + m - 1);
     } else {
@@ -273,21 +282,28 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
       arma::mat smwa1 = A.t();
       smwa1  = smwa1 / d;
       arma::mat smwc1 = c_x / d;
-      arma::mat smwa2 = A.t() -
-	(H * arma::solve(smwinner,
-			 arma::solve(smwinner.t(),
-				     H.t() * smwa1,
-				     arma::solve_opts::equilibrate),
-			 arma::solve_opts::equilibrate));
+      //Use pinv to allow for tolerance in matrix inversion
+      arma::mat smwinner_pinv = arma::pinv(smwinner, 1.0e-020);
+      arma::mat smwa2 = A.t() - (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwa1)));
+      // arma::mat smwa2 = A.t() -
+      // 	(H * arma::solve(smwinner,
+      // 			 arma::solve(smwinner.t(),
+      // 				     H.t() * smwa1,
+      // 				     )
+      // 			 ));
       smwa2 = smwa2 / d;
-      arma::mat smwc2 = (c_x -
-			 (H * arma::solve(smwinner,
-					  arma::solve(smwinner.t(),
-						      H.t() * smwc1,
-						      arma::solve_opts::equilibrate),
-					  arma::solve_opts::equilibrate)
-			  )) / d;
-      delta_y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
+      arma::mat smwc2 = c_x - (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwc1)));
+      smwc2 = smwc2 / d;
+
+      // arma::mat smwc2 = (c_x -
+      // 			 (H * arma::solve(smwinner,
+      // 					  arma::solve(smwinner.t(),
+      // 						      H.t() * smwc1
+      // 						      )
+      // 					  )
+      // 			  )) / d;
+      delta_y = arma::pinv(A * smwa2 + H_y, 1.0e-020) * (c_y + A * smwc2);
+      //delta_y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
       delta_x = smwa2 * delta_y - smwc2;
     }
 
@@ -335,13 +351,19 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
       //The last m rows and the last m columns set to H_y
       AP(arma::span(n, n + m - 1), arma::span(n, n + m - 1)) = H_y;
       // Solve
-      arma::vec s1_tmp  = arma::solve(AP, join_vert(c_x, c_y));
+      // arma::vec s1_tmp  = arma::solve(AP, join_vert(c_x, c_y));
+      arma::vec s1_tmp  = arma::pinv(AP, 1.0e-020) * join_vert(c_x, c_y);
       delta_x = s1_tmp.rows(0, n - 1);
       delta_y = s1_tmp.rows(n, n + m - 1);
     } else if (smw == 1) {
       smwc1 = c_x / d;
-      smwc2 = (c_x - (H * arma::solve(smwinner, arma::solve(smwinner.t(), H.t() * smwc1)))) / d;
-      delta_y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
+      arma::mat smwinner_pinv = arma::pinv(smwinner, 1.0e-020);
+      // smwc2 = (c_x -
+      // 	       (H * arma::solve(smwinner, arma::solve(smwinner.t(), H.t() * smwc1)))) / d;
+      smwc2 = (c_x -
+	       (H * (smwinner_pinv * (smwinner_pinv.t() * (H.t() * smwc1))))) / d;
+      // delta_y = arma::solve(A * smwa2 + H_y, c_y + A * smwc2);
+      delta_y = arma::pinv(A * smwa2 + H_y, 1.0e-020) * (c_y + A * smwc2);
       delta_x = smwa2 * delta_y - smwc2;
     }
 
@@ -462,9 +484,9 @@ arma::vec solution_w_cpp(arma::vec solution_v, arma::mat X0_scaled, arma::mat X1
   arma::vec solution_out = ipop_results["primal"];
 
   std::string conv_out = ipop_results["convergence"];
-  double dual_out = ipop_results["dual"];
-  Rcout << conv_out << std::endl;
-  Rcout << dual_out << std::endl;
+  // double dual_out = ipop_results["dual"];
+  // Rcout << conv_out << std::endl;
+  // Rcout << dual_out << std::endl;
 
   return solution_out;
 }
@@ -486,6 +508,8 @@ double fn_v_cpp(arma::vec variables_v,
 		arma::mat X0_scaled, arma::mat X1_scaled,
 		arma::mat Z0, arma::mat Z1) {
 
+  variables_v /= sum(variables_v);
+
   //The weights for each region
   arma::vec solution_w_temp = solution_w_cpp(variables_v, X0_scaled, X1_scaled);
 
@@ -498,5 +522,3 @@ double fn_v_cpp(arma::vec variables_v,
   return loss_v;
 
 }
-
-
