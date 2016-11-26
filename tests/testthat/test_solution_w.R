@@ -8,7 +8,8 @@
 ##as Synth
 
 library(kernlab); library(Rcpp); library(RcppArmadillo); library(microbenchmark)
-library(LowRankQP)
+
+set.seed(1234)
 
 ##sourceCpp("../../src/SynthCpp_functions.cpp")
 
@@ -17,14 +18,22 @@ library(LowRankQP)
 ## X.scaled <- readRDS("../../data-raw/X_forc_example.rds")
 ##Z <- readRDS("../../data-raw/Z_forc_example.rds")
 
-data(X.scaled); data(Z); data(solution.v)
+##Run test using synth
+data(solution_v_forc_example)
+data(X_scaled_forc_example)
+data(Z_forc_example)
 
-X0.scaled <- X.scaled[, 2:ncol(X.scaled), drop = FALSE]
-X1.scaled <- X.scaled[, 1, drop = FALSE]
-Z0 <- Z[, 2:ncol(X.scaled), drop = FALSE]
-Z1 <- Z[, 1, drop = FALSE]
+## treated <- 1
+## X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+## X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+## Z0 <- Z_forc_example[, -treated, drop = FALSE]
+## Z1 <- Z_forc_example[, treated, drop = FALSE]
 
+############# Test solution_w_cpp #############
 
+tol <- 1e-2
+
+##The typical R synth code
 f.reg.synth <- function(solution.v, X0.scaled, X1.scaled) {
     ##Synth implementation
     nvarsV <- length(solution.v)
@@ -46,14 +55,21 @@ f.reg.synth <- function(solution.v, X0.scaled, X1.scaled) {
     c <- -1 * c( crossprod(X1.scaled, V) %*% X0.scaled)
 
     A <- t(rep(1, length(c)))
-    b <- 1
-    l <- rep(0, length(c))
-    u <- rep(1, length(c))
-    r <- 0
+    b <- 1;
+    l <- rep(0, length(c));
+    u <- rep(1, length(c));
+    r <- 0;
 
     res <- ipop(c = c, H = H, A = A, b = b, l = l, u = u,
                 r = r, bound = 10, margin = 5e-04,
                 maxiter = 1000, sigf = 5)
+    ## res2 <- ipopCpp(c = c, H = H, A = A, b = b, l = l, u = u,
+    ##             r = r, bound = 10, margin = 5e-04,
+    ##             maxiter = 1000, sigf = 5)
+    ## print("ipop: ")
+    ## print(res@primal)
+    ## print("ipopCpp: ")
+    ## print(res2$primal)
 
     ##res2 <- LowRankQP(Vmat=H,dvec=c,Amat=A,bvec=1,uvec=rep(1,length(c)),method="LU")
     ##print(res2$alpha)
@@ -63,25 +79,75 @@ f.reg.synth <- function(solution.v, X0.scaled, X1.scaled) {
     return(solution.w)
 }
 
-##from the rcpp
 
-test_that("solution_w_cpp() produces the same results as the original Synth Code", {
-    expect_equal(f.reg.synth(solution.v, X0.scaled, X1.scaled),
-                 solution_w_cpp(as.matrix(solution.v), X0.scaled, X1.scaled),
-                 tolerance = 1e-5)
-    ## expect_equal(f.reg.synth(rep(1 / 12, 12), X0.scaled, X1.scaled),
-    ##              solution_w_cpp(as.matrix(rep(1 / 12, 12)), X0.scaled, X1.scaled),
-    ##              tolerance = 1e-5)
-})
+## -- Use equal weights for the starting value -- ##
+
+solution.v <- rep(1 / 12, 12)
+
+for (i in 1:ncol(X_scaled_forc_example)){
+
+    treated <- i
+    X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+    X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+
+    test_that(paste0("solution_w_cpp() produces the same results as the original Synth Code using equal weights for ", i), {
+        expect_equal(f.reg.synth(solution.v, X0.scaled, X1.scaled),
+                     solution_w_cpp(as.matrix(solution.v), X0.scaled, X1.scaled),
+                     tolerance = tol)
+    })
+
+}
+
+## -- Use random starting values -- ##
+
+solution.v <- runif(length(solution_v_forc_example))
+solution.v <- solution.v / sum(solution.v)
+
+for (i in 1:ncol(X_scaled_forc_example)) {
+
+    treated <- i
+    X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+    X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+
+    test_that(paste0("solution_w_cpp() produces the same results as the original Synth Code using random weights for ", i), {
+        expect_equal(f.reg.synth(solution.v, X0.scaled, X1.scaled),
+                     solution_w_cpp(as.matrix(solution.v), X0.scaled, X1.scaled),
+                     tolerance = tol)
+    })
+
+}
+
+## -- Using the actual solution from the Synth package -- ##
+
+solution.v <- solution_v_forc_example
+
+for (i in 1:ncol(X_scaled_forc_example)) {
+
+    treated <- i
+    X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+    X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+
+    test_that(paste0("solution_w_cpp() produces the same results as the original Synth Code using the real solution.v for ", i), {
+        expect_equal(f.reg.synth(solution.v, X0.scaled, X1.scaled),
+                     solution_w_cpp(as.matrix(solution.v), X0.scaled, X1.scaled),
+                     tolerance = tol)
+    })
+
+}
 
 
 
-microbenchmark(
-    f.reg.synth(solution.v, X0.scaled, X1.scaled),
-    solution_w_cpp(as.matrix(solution.v), X0.scaled, X1.scaled)
-)
 
-##test fn_v
+## microbenchmark(
+##     f.reg.synth(solution.v, X0.scaled, X1.scaled),
+##     solution_w_cpp(as.matrix(solution.v), X0.scaled, X1.scaled)
+## )
+
+############# Test fn_v_cpp #############
+
+tol <- 1e-03
+
+##the original R code
 fn_V <- function(
     variables.v = stop("variables.v missing"), X0.scaled = stop("X0.scaled missing"),
     X1.scaled = stop("X1.scaled missing"), Z0 = stop("Z0 missing"),
@@ -104,9 +170,6 @@ fn_V <- function(
                 maxiter = 1000, sigf = 5)
     solution.w <- as.matrix(primal(res))
 
-    ## print(solution.w)
-    ## print(solve(t(Z0)%*%Z0)%*%t(Z0)%*%Z1)
-
     ##loss.v <- as.numeric(t(Z1 - (Z0 %*% solution.w)) %*% (Z1 - (Z0 %*% solution.w)))
     ##Use crossprod() to speed things up
     loss.v <- as.numeric(crossprod(Z1 - (Z0 %*% solution.w)))
@@ -115,20 +178,107 @@ fn_V <- function(
     return(loss.v)
 }
 
+## -- Use equal weights for the starting value -- ##
+
+solution.v <- rep(1 / 12, 12)
+
+for (i in 1:ncol(X_scaled_forc_example)) {
+
+    treated <- i
+    X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+    X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+    Z0 <- Z_forc_example[, -treated, drop = FALSE]
+    Z1 <- Z_forc_example[, treated, drop = FALSE]
+
+    result <- tryCatch(
+        fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1)
+    )
+    if (inherits(result, "error")) {
+        test_that(paste0("fn_v_cpp() produces the same results as the original Synth Code using equal weights for ", i), {
+            expect_error(fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1))
+        })
+    }else {
+        test_that(paste0("fn_v_cpp() produces the same results as the original Synth Code using equal weights for ", i), {
+            expect_equal(fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
+                         fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1),
+                         tolerance = tol)
+        })
+    } #end of inherits(result, "error") if
+}
+
+
+
+## -- Use random weights for the starting value -- ##
+
+## solution.v <- runif(length(solution_v_forc_example))
+## solution.v <- solution.v / sum(solution.v)
+## solution.v.random <- solution.v
+
+## for (i in 1:ncol(X_scaled_forc_example)) {
+
+##     treated <- i
+##     X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+##     X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+##     Z0 <- Z_forc_example[, -treated, drop = FALSE]
+##     Z1 <- Z_forc_example[, treated, drop = FALSE]
+
+##     result <- tryCatch(
+##         fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1)
+##     )
+##     if (inherits(result, "error")) {
+##         test_that(paste0("fn_v_cpp() produces the same results as the original Synth Code using random weights for ", i), {
+##             expect_error(fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1))
+##         })
+##     }else {
+##         test_that(paste0("fn_v_cpp() produces the same results as the original Synth Code using random weights for ", i), {
+##             expect_equal(fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
+##                          fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1),
+##                          tolerance = tol)
+##         })
+##     } #end of inherits(result, "error") if
+## }
+
+
+## -- Use real solution for the starting value -- ##
+
+solution.v <- solution_v_forc_example
+
+for (i in 1:ncol(X_scaled_forc_example)) {
+
+    treated <- i
+    X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+    X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+    Z0 <- Z_forc_example[, -treated, drop = FALSE]
+    Z1 <- Z_forc_example[, treated, drop = FALSE]
+
+    result <- tryCatch(
+        fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1)
+    )
+    if (inherits(result, "error")) {
+        test_that(paste0("fn_v_cpp() produces the same results as the original Synth Code using true weights for ", i), {
+            expect_error(fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1))
+        })
+    }else {
+        test_that(paste0("fn_v_cpp() produces the same results as the original Synth Code using true weights for ", i), {
+            expect_equal(fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
+                         fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1),
+                         tolerance = tol)
+        })
+    } #end of inherits(result, "error") if
+}
+
+
+
 test_that("fn_v_cpp() produces the same results as the original Synth code", {
     expect_equal(fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
                  fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1),
                  tolerance = 1e-5
                  )
-    ## expect_equal(fn_V(as.matrix(rep(1 / 12, 12)), X0.scaled, X1.scaled, Z0, Z1),
-    ##              fn_v_cpp(as.matrix(rep(1 / 12, 12)), X0.scaled, X1.scaled, Z0, Z1),
-    ##              tolerance = 1e-5
-    ##              )
 })
 
-microbenchmark(
-    fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
-    fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1)
-)
+## microbenchmark(
+##     fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
+##     fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1)
+## )
 
 

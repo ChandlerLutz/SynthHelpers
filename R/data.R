@@ -1,25 +1,20 @@
-## c:/Dropbox/Rpackages/SynthHelpers/R/data.R
+## c:/Dropbox/Rpackages/ipopCpp/R/data.R
 
 ##    Chandler Lutz
 ##    Questions/comments: cl.eco@cbs.dk
-##    $Revisions:      1.0.0     $Date:  2016-11-21
+##    $Revisions:      1.0.0     $Date:  2016-11-24
 
-## To document data
-
-#' An example solution.v (weights on the variables) in the
-#' for the synth class
+#' Synthetic Control exmaple of a solution for the variable weights
 #'
-#' @format vector
-"solution.v"
+#' @format A vector of 12 elements
+"solution_v_forc_example"
 
-#' An example of an X.scaled matrix of for each region
-#' of input data
+#' Synthetic control X matrix of scaled predictor data
 #'
-#' @format matrix
-"X.scaled"
+#' @format A 12 x 41 matrix
+"X_scaled_forc_example"
 
-#' An example of an outcome matrix for each region
+#' Synthetic control Z matrix of outcome variables
 #'
-#' @format matrix
-"Z"
-
+#' @format A 18 x 42 matrix
+"Z_forc_example"

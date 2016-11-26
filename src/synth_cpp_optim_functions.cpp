@@ -48,9 +48,7 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
   //The number of rows in H
   int n = H.n_rows;
   int cols = H.n_cols;
-  double inv_tol = 1.0e-025; 
-
-  //Rcout << "Rows: " << n << std::endl;
+  double inv_tol = 1.0e-025;
 
   //Check for a decomposed matrix
   int smw = 0;
@@ -65,8 +63,6 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     n = cols;
     H = H.t();
   }
-
-  //Rcout << "smw: " << smw << std::endl;
 
   //The number of rows in A
   int m = A.n_rows;
@@ -151,8 +147,6 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     arma::mat AP_pinv = pinv(AP, inv_tol);
     arma::vec s_tmp = AP_pinv *  cvec;
     //arma::vec s_tmp  = arma::solve(AP, cvec);
-    // Rcout << "s_tmp: " << std::endl;
-    // s_tmp.print();
 
     // Get x and y
     x = s_tmp.rows(0, n - 1);
@@ -239,6 +233,8 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     //double.
     sigfig = as_scalar(-1*log10(abs(primal_obj - dual_obj) / (abs(primal_obj) + 1)));
 
+
+
     if (sigfig <= 0) sigfig = 0;
     if (sigfig >= sigf) break;
 
@@ -259,6 +255,8 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     H_y.diag() = e;
     c_x = sigma - z % hat_nu / g - s % hat_tau / t;
     c_y = rho - e % (hat_beta - q % hat_alpha / p);
+
+
 
     // and solve the system [-H.x A' A H.y] [delta.x, delta.y] <- [c.x c.y]
     //Add in -H_x for the first n x n matrix of AP 0 to n for
@@ -342,7 +340,6 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
     c_x = sigma - z % hat_nu / g - s % hat_tau / t;
     c_y = rho - e % (hat_beta - q % hat_alpha / p);
 
-
     // and solve the system [-H.x A' A H.y] [delta.x, delta.y] <- [c.x c.y]
     if (smw == 0) {
       //Add in -H_x for the first n x n matrix of AP 0 to n for
@@ -402,6 +399,9 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
 
   }
 
+
+
+
   //primal and dual infeasiblity
   double primal_infeasibility = max(svd(join_vert(join_vert(join_vert(rho, tau), alpha), nu))) / b_plus_1;
     double dual_infeasibility = max(svd(join_vert(sigma, beta))) / c_plus_1;
@@ -432,7 +432,6 @@ List ipopCpp(arma::vec c, arma::mat H, arma::mat A, arma::vec b,
   return ret;
 }
 
-
 //' To get the solution for the weights from the weights on each
 //' predictor variable and the X scaled matrices for the treated unit
 //' and control units
@@ -454,10 +453,9 @@ arma::vec solution_w_cpp(arma::vec solution_v, arma::mat X0_scaled, arma::mat X1
   arma::mat H_mat = X0_scaled.t() * V_mat * X0_scaled;
 
   //c vector
-  arma::mat c_mat = -1 * (X1_scaled.t() * V_mat * X0_scaled);
+  //arma::mat c_mat = -1 * (X1_scaled.t() * V_mat * X0_scaled);
 
   arma::vec c_vec = -1 * vectorise(X1_scaled.t() * V_mat * X0_scaled);
-
 
   //A matrix -- row unit vector with length c
   arma::mat A_mat = arma::ones<arma::mat>(1, c_vec.n_elem);
@@ -469,7 +467,7 @@ arma::vec solution_w_cpp(arma::vec solution_v, arma::mat X0_scaled, arma::mat X1
   arma::vec l_vec = arma::zeros<arma::vec>(c_vec.n_elem, 1);
 
   //u vector
-  arma::vec u_vec = arma::eye<arma::vec>(c_vec.n_elem, 1);
+  arma::vec u_vec = arma::ones<arma::vec>(c_vec.n_elem, 1);
 
   //r vector
   arma::vec r_vec = arma::zeros<arma::vec>(1, 1);
