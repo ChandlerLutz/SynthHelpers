@@ -267,14 +267,37 @@ for (i in 1:ncol(X_scaled_forc_example)) {
     } #end of inherits(result, "error") if
 }
 
+## -- Negative Starting values for V -- ##
+
+solution.v = c(0.3052888, -0.1905343, 0.4689118, -0.04255901, 0.1403084,
+               -0.2387303, 0.7014965, -0.1981224, -0.2689189, 0.1497544,
+               0.07817975, 0.2257424)
 
 
-test_that("fn_v_cpp() produces the same results as the original Synth code", {
-    expect_equal(fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
-                 fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1),
-                 tolerance = 1e-5
-                 )
-})
+for (i in 1:ncol(X_scaled_forc_example)) {
+
+    treated <- i
+    X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+    X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+    Z0 <- Z_forc_example[, -treated, drop = FALSE]
+    Z1 <- Z_forc_example[, treated, drop = FALSE]
+
+    result <- tryCatch(
+        fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1)
+    )
+    if (inherits(result, "error")) {
+        test_that(paste0("fn_v_cpp() produces the same results as the original Synth Code using negative starting values weights for ", i), {
+            expect_error(fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1))
+        })
+    }else {
+        test_that(paste0("fn_v_cpp() produces the same results as the original Synth Code using true weights for ", i), {
+            expect_equal(fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
+                         fn_v_cpp(matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1),
+                         tolerance = tol)
+        })
+    } #end of inherits(result, "error") if
+}
+
 
 
 ## treated <- 4

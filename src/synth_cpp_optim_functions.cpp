@@ -506,7 +506,8 @@ double fn_v_cpp(arma::vec variables_v,
 		arma::mat X0_scaled, arma::mat X1_scaled,
 		arma::mat Z0, arma::mat Z1) {
 
-  variables_v /= sum(variables_v);
+  //Absolute value of starting values
+  variables_v = abs(variables_v);
 
   //The weights for each region
   arma::vec solution_w_temp = solution_w_cpp(variables_v, X0_scaled, X1_scaled);
