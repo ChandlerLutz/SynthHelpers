@@ -276,6 +276,13 @@ test_that("fn_v_cpp() produces the same results as the original Synth code", {
                  )
 })
 
+
+## treated <- 4
+## solution.v <- rep(1 / 12, 12)
+## X0.scaled <- X_scaled_forc_example[, -treated, drop = FALSE]
+## X1.scaled <- X_scaled_forc_example[, treated, drop = FALSE]
+## Z0 <- Z_forc_example[, -treated, drop = FALSE]
+## Z1 <- Z_forc_example[, treated, drop = FALSE]
 ## microbenchmark(
 ##     fn_V(solution.v, X0.scaled, X1.scaled, Z0, Z1),
 ##     fn_v_cpp(as.matrix(solution.v), X0.scaled, X1.scaled, Z0, Z1)

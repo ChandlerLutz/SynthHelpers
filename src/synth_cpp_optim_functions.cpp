@@ -481,7 +481,7 @@ arma::vec solution_w_cpp(arma::vec solution_v, arma::mat X0_scaled, arma::mat X1
   //weights in the synthetic control process
   arma::vec solution_out = ipop_results["primal"];
 
-  std::string conv_out = ipop_results["convergence"];
+  // std::string conv_out = ipop_results["convergence"];
   // double dual_out = ipop_results["dual"];
   // Rcout << conv_out << std::endl;
   // Rcout << dual_out << std::endl;
